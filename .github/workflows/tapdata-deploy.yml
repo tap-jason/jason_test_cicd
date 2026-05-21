@@ -14,9 +14,9 @@ on:
         required: true
         type: choice
         options:
-          - dev
-          - sit
-          - lpt
+          - UAT
+          - PRE-PROD
+          - PROD
       project:
         description: 'Project name (matches the {project}_tapdata_export/ directory prefix; auto-detected on push events)'
         required: true
@@ -415,7 +415,7 @@ jobs:
   # ============================================================
   deploy-connections:
     name: Deploy Connections
-    runs-on: [self-hosted, tapdata]
+    runs-on: self-hosted
     timeout-minutes: 15
     environment: deploy
     needs: [preparation, preview-all]
