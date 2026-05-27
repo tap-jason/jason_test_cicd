@@ -8,10 +8,11 @@ on:
         required: true
         type: choice
         options:
-          - sit
           - dev
+          - sit
           - UAT
-          - prod
+          - PRE-PROD
+          - PROD
       last_stable_tag:
         description: 'Tag to rollback to (required)'
         required: true
@@ -58,7 +59,7 @@ jobs:
   # ============================================================
   preparation:
     name: Preparation Phase
-    runs-on: [self-hosted, tapdata]
+    runs-on: self-hosted
     timeout-minutes: 5
     environment: ${{ inputs.target_env }}
     outputs:
@@ -77,17 +78,15 @@ jobs:
       # 多租户模式：额外 checkout worker scripts 到 _worker/
       - name: Set Runtime Paths
         run: |
-          if [[ -n "${{ inputs.caller_repo }}" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_call" && -n "${{ inputs.caller_repo }}" ]]; then
             echo "WORKER_REPO=${{ inputs.worker_repo }}" >> "$GITHUB_ENV"
             echo "SCRIPT_ROOT=_worker" >> "$GITHUB_ENV"
-            echo "REPO_ROOT=${{ github.workspace }}" >> "$GITHUB_ENV"
           else
             echo "SCRIPT_ROOT=." >> "$GITHUB_ENV"
-            echo "REPO_ROOT=$(pwd)" >> "$GITHUB_ENV"
           fi
 
       - name: Checkout Worker Scripts
-        if: inputs.caller_repo != ''
+        if: github.event_name == 'workflow_call' && inputs.caller_repo != ''
         uses: actions/checkout@v4
         with:
           repository: ${{ env.WORKER_REPO }}
@@ -98,12 +97,11 @@ jobs:
       - name: Check tapdata_export Directory
         run: bash $SCRIPT_ROOT/scripts/common/check-export-dir.sh
         env:
-          EXPORT_DIR: ${{ env.REPO_ROOT }}/${{ env.PROJECT }}_tapdata_export
+          EXPORT_DIR: ${{ github.workspace }}/${{ env.PROJECT }}_tapdata_export
 
       - name: Validate Input Parameters
         run: bash $SCRIPT_ROOT/scripts/tapdata-rollback/validate-inputs.sh
         env:
-          REPO_ROOT: ${{ env.REPO_ROOT }}
           TARGET_ENV: ${{ inputs.target_env }}
           LAST_STABLE_TAG: ${{ inputs.last_stable_tag }}
           PROJECT: ${{ inputs.project }}
@@ -173,7 +171,7 @@ jobs:
 
       - name: Set Runtime Paths
         run: |
-          if [[ -n "${{ inputs.caller_repo }}" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_call" && -n "${{ inputs.caller_repo }}" ]]; then
             echo "WORKER_REPO=${{ inputs.worker_repo }}" >> "$GITHUB_ENV"
             echo "SCRIPT_ROOT=_worker" >> "$GITHUB_ENV"
           else
@@ -181,7 +179,7 @@ jobs:
           fi
 
       - name: Checkout Worker Scripts
-        if: inputs.caller_repo != ''
+        if: github.event_name == 'workflow_call' && inputs.caller_repo != ''
         uses: actions/checkout@v4
         with:
           repository: ${{ env.WORKER_REPO }}
@@ -231,13 +229,13 @@ jobs:
       - name: Checkout Data Repository at Stable Tag
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.caller_repo != '' && inputs.caller_repo || github.repository }}
+          repository: ${{ github.event_name == 'workflow_call' && inputs.caller_repo != '' && inputs.caller_repo || github.repository }}
           ref: ${{ needs.preparation.outputs.last_stable_tag }}
           token: ${{ secrets.GH_DEPLOY_TOKEN }}
 
       - name: Set Runtime Paths
         run: |
-          if [[ -n "${{ inputs.caller_repo }}" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_call" && -n "${{ inputs.caller_repo }}" ]]; then
             echo "WORKER_REPO=${{ inputs.worker_repo }}" >> "$GITHUB_ENV"
             echo "SCRIPT_ROOT=_worker" >> "$GITHUB_ENV"
             echo "REPO_ROOT=${{ github.workspace }}" >> "$GITHUB_ENV"
@@ -248,7 +246,7 @@ jobs:
 
       # 多租户模式：额外 checkout worker scripts（配置文件和脚本分属不同仓库）
       - name: Checkout Worker Scripts
-        if: inputs.caller_repo != ''
+        if: github.event_name == 'workflow_call' && inputs.caller_repo != ''
         uses: actions/checkout@v4
         with:
           repository: ${{ env.WORKER_REPO }}
