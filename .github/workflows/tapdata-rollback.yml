@@ -8,6 +8,8 @@ on:
         required: true
         type: choice
         options:
+          - dev
+          - sit
           - UAT
           - PRE-PROD
           - PROD

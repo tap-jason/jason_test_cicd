@@ -14,6 +14,8 @@ on:
         required: true
         type: choice
         options:
+          - sit
+          - dev
           - UAT
           - PRE-PROD
           - PROD
